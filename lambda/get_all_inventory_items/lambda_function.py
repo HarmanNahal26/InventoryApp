@@ -1,18 +1,27 @@
 import json
 import boto3
+import decimal
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('Inventory')
 
-def response(status, body):
-    return {
-        "statusCode": status,
-        "body": json.dumps(body)
-    }
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
+        return super().default(obj)
 
 def lambda_handler(event, context):
     try:
-        result = table.scan()
-        return response(200, result['Items'])
+        response = table.scan()
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps(response['Items'], cls=DecimalEncoder)
+        }
+
     except Exception as e:
-        return response(500, str(e))
+        return {
+            'statusCode': 500,
+            'body': str(e)
+        }
